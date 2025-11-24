@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    // Register 
-
+    // Register
     public function register(Request $req)
     {
         $data = $req->validate([
@@ -20,26 +19,31 @@ class AuthController extends Controller
         ]);
 
         $user = User::create([
-             'name' => $data['name'],
-             'email' => $data['email'],
-             'password' => Hash::make($data['password']),
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($data['password']),
         ]);
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        // If you use tymon/jwt-auth (JWT), create token like this:
+        $token = auth()->login($user); // returns JWT token string
 
         return response()->json([
             'user' => $user,
             'token' => $token,
         ], 201);
     }
-    //  Login
-    public function login(Request $req){
-        $credentials = $req->validate([
-            'email' => 'required|email',
-            'password' => 'required|string',
-        ]);
-        
-        if(!$token = auth()->attempt($credentials)){
+
+    // Login
+    public function login(Request $req)
+    {
+        // $credentials = $req->validate([
+        //     'email' => 'required|email',
+        //     'password' => 'required|string',
+        // ]);
+
+        $credentials = $req->only('email', 'password');
+
+        if (! $token = auth()->attempt($credentials)) {
             return response()->json(['error' => 'Invalid Credentials'], 401);
         }
 
@@ -49,7 +53,7 @@ class AuthController extends Controller
         ]);
     }
 
-  // current user
+    // current user
     public function me()
     {
         return response()->json(auth()->user());
