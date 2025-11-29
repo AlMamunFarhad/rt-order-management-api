@@ -6,35 +6,49 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
     public function index()
     {
-        $products = Product::with('stocks')->paginate(20);
-
+        $products = Product::with('stocks')->orderBy('created_at', 'desc')->paginate(10);
         return response()->json($products);
     }
 
     public function store(Request $req)
     {
-        // Validate Product
+
         $data = $req->validate([
             'name' => 'required|string',
             'barcode' => 'required|string|unique:products,barcode',
             'description' => 'nullable|string',
-            // Stock Fields
             'sku' => 'nullable|string',
             'purchase_price' => 'nullable|numeric',
             'sale_price' => 'nullable|numeric',
             'quantity' => 'nullable|numeric',
             'received_at' => 'required|date',
+            'image' => 'nullable|image|mimes:jpg,png,jpeg,webp|max:5120',
         ]);
 
         $data['slug'] = Str::slug($data['name'].'-'.uniqid());
-        $product = Product::create($data);
-        // Create Stock under Product
+
+        // create product without image first
+        $product = Product::create([
+            'name' => $data['name'],
+            'barcode' => $data['barcode'],
+            'description' => $data['description'] ?? null,
+            'slug' => $data['slug'],
+        ]);
+
+        // store image only if provided
+        if ($req->hasFile('image')) {
+            $path = $req->file('image')->store('products', 'public');
+            $product->image = $path;
+            $product->save();
+        }
+        // create stock
         $product->stocks()->create([
             'sku' => $data['sku'],
             'purchase_price' => $data['purchase_price'],
@@ -43,7 +57,6 @@ class ProductController extends Controller
             'received_at' => $data['received_at'],
         ]);
 
-        // Load stocks to include in response
         $product->load('stocks');
 
         return response()->json([
@@ -67,14 +80,13 @@ class ProductController extends Controller
             'name' => 'required|string',
             'barcode' => 'required|string|unique:products,barcode,'.$product->id,
             'description' => 'nullable|string',
-            // Stock fields (flat)
             'sku' => 'required|string',
             'purchase_price' => 'required|numeric',
             'sale_price' => 'required|numeric',
             'quantity' => 'required|numeric',
             'received_at' => 'required|date',
-            // optional: if frontend sends stock_id to update a specific stock row
             'stock_id' => 'nullable|exists:stocks,id',
+            'image' => 'nullable|image|mimes:jpg,png,jpeg,webp|max:5120',
         ]);
 
         DB::beginTransaction();
@@ -86,6 +98,19 @@ class ProductController extends Controller
                 'barcode' => $data['barcode'],
                 'description' => $data['description'] ?? null,
             ]);
+
+            if ($req->hasFile('image')) {
+                if ($product->getRawOriginal('image')
+                    && Storage::disk('public')->exists($product->getRawOriginal('image'))) {
+                    Storage::disk('public')->delete($product->getRawOriginal('image'));
+                }
+
+                $file = $req->file('image');
+                $path = $file->store('products', 'public');
+
+                $product->image = $path;
+                $product->save();
+            }
 
             // Determine which stock to update/create
             if (! empty($data['stock_id'])) {

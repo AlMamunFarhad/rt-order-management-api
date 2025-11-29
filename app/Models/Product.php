@@ -9,10 +9,23 @@ class Product extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name','barcode','slug','description'];
+    protected $fillable = ['name', 'barcode', 'slug', 'description', 'image'];
 
     public function stocks()
     {
         return $this->hasMany(Stock::class);
+    }
+
+    public function getImageAttribute($value)
+    {
+        if (! $value) {
+            return null;
+        }
+
+        if (str_starts_with($value, 'http')) {
+            return $value;
+        }
+
+        return asset('storage/'.$value);
     }
 }
