@@ -35,8 +35,5 @@ Route::group(['middleware' => 'auth:api'],function () {
     Route::put('/stocks/{stock}', [StockController::class,'update']);
 
     // orders
-    Route::get('/orders', [OrderController::class,'index']);
-    Route::post('/orders', [OrderController::class,'store']);
-    Route::get('/orders/{order}', [OrderController::class,'show']);
-    Route::delete('/orders/{order}', [OrderController::class,'destroy']);
+   Route::apiResource('orders', OrderController::class);
 });
