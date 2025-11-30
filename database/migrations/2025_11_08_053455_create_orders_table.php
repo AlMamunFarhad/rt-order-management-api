@@ -6,25 +6,20 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
             $table->string('invoice_number')->unique();
-            $table->timestamp('datetime')->useCurrent();
-            $table->string('customer_name')->nullable();
-            $table->decimal('total_amount', 12, 2)->default(0);
-            $table->enum('status', ['pending','paid','cancelled'])->default('pending');
+            $table->timestamp('date_time');
+            $table->decimal('total_amount', 10, 2);
+            $table->string('customer_name');
+            $table->enum('status', ['Pending', 'Processing', 'Delivered', 'Cancelled'])
+                  ->default('Pending');
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('orders');
