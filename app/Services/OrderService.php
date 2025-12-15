@@ -65,11 +65,19 @@ class OrderService
     public function updateOrder(Order $order, array $data): Order
     {
         return DB::transaction(function () use ($order, $data) {
+            $orderFields = array_intersect_key($data, array_flip(['invoice_number', 'date_time', 'customer_name', 'status']));
+            if (! empty($orderFields)) {
+                $order->update($orderFields);
+            }
+            $items = $data['items'] ?? null;
+            if (empty($items) || ! is_array($items)) {
+                return $order->load('products.product');
+            }
             $existing = $order->products()->get()->keyBy('id');
             $incomingIds = [];
             $total = 0;
 
-            foreach ($data['items'] as $item) {
+            foreach ($items as $item) {
                 $opId = $item['order_product_id'] ?? null;
                 $productId = (int) $item['product_id'];
                 $newQty = (int) $item['quantity'];
@@ -81,8 +89,10 @@ class OrderService
                     $delta = $newQty - $oldQty;
 
                     if ($delta !== 0) {
-                        $stock = $op->stock_id ? \App\Models\Stock::lockForUpdate()->find($op->stock_id)
-                                                : \App\Models\Stock::where('product_id', $productId)->lockForUpdate()->firstOrFail();
+                        $stock = $op->stock_id
+                            ? \App\Models\Stock::lockForUpdate()->find($op->stock_id)
+                            : \App\Models\Stock::where('product_id', $productId)->lockForUpdate()->firstOrFail();
+
                         $this->stockService->changeStock($stock->id, $productId, -$delta, 'Order-update');
                     }
 
@@ -95,8 +105,10 @@ class OrderService
                     $incomingIds[] = $op->id;
                     $total += $newQty * $unitPrice;
                 } else {
-                    $stock = ! empty($item['stock_id']) ? \App\Models\Stock::lockForUpdate()->findOrFail($item['stock_id'])
-                                                      : \App\Models\Stock::where('product_id', $productId)->lockForUpdate()->firstOrFail();
+                    $stock = ! empty($item['stock_id'])
+                        ? \App\Models\Stock::lockForUpdate()->findOrFail($item['stock_id'])
+                        : \App\Models\Stock::where('product_id', $productId)->lockForUpdate()->firstOrFail();
+
                     $this->stockService->changeStock($stock->id, $productId, -$newQty, 'Order-update');
 
                     $newOp = OrderProduct::create([
@@ -117,8 +129,10 @@ class OrderService
             $toRemove = $existing->keys()->diff($incomingIds);
             foreach ($toRemove as $removeId) {
                 $op = $existing->get($removeId);
-                $stock = $op->stock_id ? \App\Models\Stock::lockForUpdate()->find($op->stock_id)
-                                        : \App\Models\Stock::where('product_id', $op->product_id)->lockForUpdate()->firstOrFail();
+                $stock = $op->stock_id
+                    ? \App\Models\Stock::lockForUpdate()->find($op->stock_id)
+                    : \App\Models\Stock::where('product_id', $op->product_id)->lockForUpdate()->firstOrFail();
+
                 $this->stockService->changeStock($stock->id, $op->product_id, $op->quantity, 'Order-update');
                 $op->delete();
             }

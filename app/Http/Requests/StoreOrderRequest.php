@@ -25,12 +25,12 @@ class StoreOrderRequest extends FormRequest
             'invoice_number' => ['required', 'string', 'unique:orders,invoice_number'],
             'date_time' => ['required', 'date'],
             'customer_name' => ['required', 'string'],
-            'status' => ['nullable', 'in:Pending,Processing,Delivered,Cancelled'],
+            'status' => ['required', 'in:Pending,Processing,Delivered,Cancelled'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
-            'items.*.stock_id' => ['nullable', 'exists:stocks,id'],
+            'items.*.stock_id' => ['required', 'exists:stocks,id'],
         ];
     }
 }

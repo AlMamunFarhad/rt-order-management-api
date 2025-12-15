@@ -68,7 +68,6 @@ class ProductController extends Controller
     public function show(Product $product)
     {
         $product->load('stocks');
-
         return response()->json($product);
     }
 
@@ -125,7 +124,7 @@ class ProductController extends Controller
                         'received_at' => $data['received_at'],
                     ]);
                 } else {
-                    // fallback: create new stock linked to product
+                    // create new stock linked to product
                     $product->stocks()->create([
                         'sku' => $data['sku'],
                         'purchase_price' => $data['purchase_price'],
