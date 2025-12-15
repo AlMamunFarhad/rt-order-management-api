@@ -36,4 +36,6 @@ Route::group(['middleware' => 'auth:api'],function () {
 
     // orders
    Route::apiResource('orders', OrderController::class);
+   Route::put('/orders/{order}/status', [OrderController::class, 'updateStatus']);
+
 });
